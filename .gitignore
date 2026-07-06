@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+rag-server/data/chroma/
+rag-server/data/uploads/
+.openclaw/
+.DS_Store
