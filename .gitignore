@@ -1,7 +1,4 @@
-node_modules/
-.env
+﻿node_modules/
+.vscode/
 *.log
-rag-server/data/chroma/
-rag-server/data/uploads/
-.openclaw/
 .DS_Store
