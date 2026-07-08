@@ -1,0 +1,54 @@
+{
+  "$schema": "https://docs.openclaw.ai/schemas/config.json",
+  "comment": "OpenClaw 配置文件模板 — 使用时请替换占位符，切勿直接提交密钥",
+
+  "agents": {
+    "defaults": {
+      "workspace": "~/.openclaw/workspace",
+      "model": {
+        "primary": "deepseek/deepseek-chat",
+        "fallbacks": ["google/gemini-2.5-flash"]
+      },
+      "models": {
+        "deepseek/deepseek-chat": {
+          "alias": "DeepSeek Chat"
+        },
+        "google/gemini-2.5-flash": {
+          "alias": "Gemini Flash"
+        }
+      },
+      "sandbox": {
+        "mode": "non-main"
+      }
+    }
+  },
+
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "connectionMode": "websocket",
+      "dmPolicy": "pairing",
+      "groupPolicy": "allowlist",
+      "requireMention": true,
+      "accounts": {
+        "main": {
+          "appId": "YOUR_FEISHU_APP_ID",
+          "appSecret": "YOUR_FEISHU_APP_SECRET",
+          "domain": "feishu"
+        }
+      }
+    }
+  },
+
+  "skills": {
+    "entries": {
+      "knowledge-collector": {
+        "enabled": true
+      }
+    }
+  },
+
+  "cron": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "rag-server",
+  "version": "1.0.0",
+  "description": "RAG knowledge base server for OpenClaw Knowledge Assistant — 文档解析、向量化入库与语义检索",
+  "type": "module",
+  "main": "src/query-kb.mjs",
+  "scripts": {
+    "start": "node src/query-kb.mjs",
+    "ingest:doc": "node src/ingest-doc.mjs",
+    "query": "node src/query-kb.mjs",
+    "chroma": "npx chroma run --path ./data/chroma"
+  },
+  "dependencies": {
+    "chromadb": "^1.10.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.0",
+    "html-to-text": "^9.0.0",
+    "mammoth": "^1.8.0",
+    "node-fetch": "^3.3.0",
+    "openai": "^4.0.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "keywords": [
+    "rag",
+    "chromadb",
+    "openclaw",
+    "knowledge-base",
+    "vector-search"
+  ],
+  "license": "MIT"
+}
