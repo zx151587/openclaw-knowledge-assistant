@@ -348,9 +348,19 @@ async function main() {
       tags: mergedTags,
       content: page.content
     });
-    console.log(`   ✅ 入库成功!`);
+    console.log(`   ✅ 本地存储入库成功!`);
     console.log(`   ID: ${entry.id}`);
     console.log(`   时间: ${entry.createdAt}`);
+
+    // ===== 新增：同步写入 ChromaDB 向量知识库 =====
+    console.log('');
+    console.log('🧠 同步写入 RAG 向量知识库...');
+    const ragResult = await ingestToRagServer(entry);
+    if (ragResult?.success) {
+      console.log(`   ✅ 向量库写入成功，共切分为 ${ragResult.chunk_count} 个知识片段`);
+    }
+    // ==========================================
+
     console.log('');
     console.log(`📝 已保存知识: ${entry.title}`);
     console.log(`📎 URL: ${entry.url}`);
@@ -362,7 +372,48 @@ async function main() {
   console.log('❌ 请提供 --url 参数。使用 --help 查看用法。');
   process.exit(1);
 }
+// ============================================================
+// 写入 RAG 向量知识库（对接 C 同学 ChromaDB 后端）
+// ============================================================
+/**
+ * 将结构化网页数据写入 rag-server 向量数据库
+ * @param {object} entry - addEntry 返回的结构化条目
+ * @returns {Promise<object|null>} 接口返回结果，失败返回 null
+ */
+async function ingestToRagServer(entry) {
+  // 从环境变量读取后端地址，默认本地 3000 端口
+  const serverBase = process.env.RAG_SERVER_URL || 'http://localhost:3000';
+  const endpoint = `${serverBase}/api/ingest-webpage`;
 
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        id: entry.id,
+        url: entry.url,
+        title: entry.title,
+        summary: entry.summary,
+        tags: entry.tags,
+        content: entry.content,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt || entry.createdAt
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.error(`   ⚠️  向量知识库写入失败: ${err.message}`);
+    console.error(`      请确认 rag-server 服务已启动，地址为 ${serverBase}`);
+    return null;
+  }
+}
 main().catch(err => {
   console.error('❌ 程序出错:', err.message);
   process.exit(1);

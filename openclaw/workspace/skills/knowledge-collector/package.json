@@ -1,0 +1,17 @@
+{
+  "name": "knowledge-collector",
+  "version": "1.0.0",
+  "description": "智能知识收集器：网页抓取、AI摘要标签、知识入库",
+  "type": "module",
+  "scripts": {
+    "collect": "node scripts/collect.mjs",
+    "query": "node scripts/query.mjs",
+    "digest": "node scripts/digest.mjs",
+    "status": "node scripts/collect.mjs --status"
+  },
+  "dependencies": {
+    "iconv-lite": "^0.7.3",
+    "node-fetch": "^3.3.2"
+  },
+  "author": "B"
+}
