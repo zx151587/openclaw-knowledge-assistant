@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 知识收集器 - 可视化看板</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #f1f5f9;
+    --dim: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 { font-size: 24px; }
+  .header h1 span { color: var(--accent); }
+  .header .sub { color: var(--dim); font-size: 14px; }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .num { font-size: 36px; font-weight: 700; margin-bottom: 4px; }
+  .stat-card .label { font-size: 13px; color: var(--dim); }
+  .stat-card.accent .num { color: var(--accent); }
+  .stat-card.green .num { color: var(--green); }
+  .stat-card.purple .num { color: var(--accent2); }
+  .stat-card.yellow .num { color: var(--yellow); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 768px) { .row { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card h2 { font-size: 16px; margin-bottom: 16px; color: var(--dim); }
+  .card h2 .count { color: var(--text); font-weight: 400; }
+
+  /* 标签云 */
+  .tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px; font-size: 13px;
+    background: rgba(56,189,248,0.12); color: var(--accent);
+    border: 1px solid rgba(56,189,248,0.25);
+    transition: all 0.2s;
+  }
+  .tag-item:hover { background: rgba(56,189,248,0.2); transform: translateY(-1px); }
+  .tag-item .cnt {
+    background: rgba(56,189,248,0.2); border-radius: 10px;
+    padding: 1px 8px; font-size: 11px; font-weight: 600;
+  }
+  .tag-item.size-lg { font-size: 16px; padding: 8px 18px; }
+  .tag-item.size-md { font-size: 14px; }
+  .tag-item.size-sm { font-size: 12px; opacity: 0.85; }
+
+  /* 条目列表 */
+  .entry-list { display: flex; flex-direction: column; gap: 12px; }
+  .entry-item {
+    padding: 14px; border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.2s; cursor: default;
+  }
+  .entry-item:hover { border-color: var(--accent); background: rgba(56,189,248,0.04); }
+  .entry-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .entry-title a { color: var(--accent); text-decoration: none; }
+  .entry-title a:hover { text-decoration: underline; }
+  .entry-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .entry-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: rgba(167,139,250,0.12); color: var(--accent2);
+  }
+  .entry-summary { font-size: 13px; color: var(--dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .entry-meta { font-size: 11px; color: var(--dim); opacity: 0.6; margin-top: 6px; }
+
+  /* SVG 图表容器 */
+  .chart-container { width: 100%; height: 280px; position: relative; }
+  .chart-container svg { width: 100%; height: 100%; }
+
+  /* 时间轴 */
+  .timeline { display: flex; align-items: flex-end; gap: 4px; height: 200px; padding: 20px 0; }
+  .timeline-bar {
+    flex: 1; border-radius: 4px 4px 0 0; min-height: 4px;
+    background: linear-gradient(to top, var(--accent), var(--accent2));
+    transition: all 0.3s; position: relative; cursor: pointer;
+  }
+  .timeline-bar:hover { opacity: 0.8; }
+  .timeline-bar .tooltip {
+    display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    background: #000; color: #fff; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; white-space: nowrap; margin-bottom: 6px; z-index: 10;
+  }
+  .timeline-bar:hover .tooltip { display: block; }
+
+  /* 搜索 */
+  .search-bar {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .search-bar input {
+    flex: 1; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 14px;
+    outline: none; transition: border 0.2s;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--dim); }
+  .search-bar button {
+    padding: 10px 20px; border-radius: 8px; border: none;
+    background: var(--accent); color: #000; font-weight: 600;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .search-bar button:hover { opacity: 0.85; }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--dim); }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .loading { text-align: center; padding: 60px; color: var(--dim); }
+
+  /* 刷新按钮 */
+  .refresh-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 配色 */
+  .tag-color-0 { color: #38bdf8; border-color: rgba(56,189,248,0.3); }
+  .tag-color-1 { color: #a78bfa; border-color: rgba(167,139,250,0.3); }
+  .tag-color-2 { color: #34d399; border-color: rgba(52,211,153,0.3); }
+  .tag-color-3 { color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+  .tag-color-4 { color: #f87171; border-color: rgba(248,113,113,0.3); }
+  .tag-color-5 { color: #fb923c; border-color: rgba(251,146,60,0.3); }
+  .tag-color-6 { color: #e879f9; border-color: rgba(232,121,249,0.3); }
+  .tag-color-7 { color: #22d3ee; border-color: rgba(34,211,238,0.3); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📚 <span>知识收集器</span> 看板</h1>
+    <div class="sub">knowledge-collector dashboard</div>
+  </div>
+  <button class="refresh-btn" onclick="loadData()">🔄 刷新数据</button>
+</div>
+
+<!-- 统计卡片 -->
+<div class="stats-grid" id="statsGrid">
+  <div class="stat-card accent"><div class="num" id="totalCount">-</div><div class="label">总知识条目</div></div>
+  <div class="stat-card green"><div class="num" id="todayCount">-</div><div class="label">今日新增</div></div>
+  <div class="stat-card purple"><div class="num" id="tagCount">-</div><div class="label">不同标签</div></div>
+  <div class="stat-card yellow"><div class="num" id="maxTags">-</div><div class="label">条目最多标签</div></div>
+</div>
+
+<!-- 图表区域 -->
+<div class="row">
+  <div class="card">
+    <h2>📊 标签分布</h2>
+    <div class="chart-container" id="pieChart"><div class="loading">加载中...</div></div>
+  </div>
+  <div class="card">
+    <h2>📈 每日新增趋势</h2>
+    <div class="chart-container" id="trendChart"><div class="loading">加载中...</div></div>
+  </div>
+</div>
+
+<!-- 标签云 -->
+<div class="card" style="margin-bottom: 24px;">
+  <h2>🏷️ 标签云</h2>
+  <div class="tag-cloud" id="tagCloud"><div class="loading" style="padding:20px">加载中...</div></div>
+</div>
+
+<!-- 搜索 + 列表 -->
+<div class="card">
+  <h2>📋 知识条目</h2>
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="搜索标题、摘要、标签..." oninput="filterEntries()">
+    <button onclick="filterEntries()">搜索</button>
+  </div>
+  <div class="entry-list" id="entryList"><div class="loading">加载中...</div></div>
+</div>
+
+<script>
+// ============================================================
+// 主逻辑
+// ============================================================
+let allEntries = [];
+
+async function loadData() {
+  try {
+    // 尝试从 data/knowledge.json 加载
+    const resp = await fetch('./data/knowledge.json?' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    allEntries = await resp.json();
+    if (!Array.isArray(allEntries)) allEntries = [];
+  } catch (e) {
+    console.warn('无法加载 knowledge.json:', e.message);
+    // fallback: 尝试上级目录
+    try {
+      const resp2 = await fetch('../data/knowledge.json?' + Date.now());
+      allEntries = await resp2.json();
+      if (!Array.isArray(allEntries)) allEntries = [];
+    } catch (e2) {
+      document.getElementById('statsGrid').innerHTML =
+        '<div class="empty"><div class="icon">⚠️</div><div>无法加载知识库数据<br><small>' + e2.message + '</small></div></div>';
+      return;
+    }
+  }
+  renderAll();
+}
+
+function renderAll() {
+  renderStats();
+  renderPieChart();
+  renderTrendChart();
+  renderTagCloud();
+  filterEntries();
+}
+
+// ============================================================
+// 统计卡片
+// ============================================================
+function renderStats() {
+  const total = allEntries.length;
+  const today = allEntries.filter(e => {
+    const d = new Date(e.createdAt);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth() === now.getMonth() &&
+           d.getDate() === now.getDate();
+  }).length;
+  const allTags = new Set();
+  let maxTagsCount = 0;
+  allEntries.forEach(e => {
+    if (e.tags) { e.tags.forEach(t => allTags.add(t)); }
+    if (e.tags && e.tags.length > maxTagsCount) maxTagsCount = e.tags.length;
+  });
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('todayCount').textContent = today;
+  document.getElementById('tagCount').textContent = allTags.size;
+  document.getElementById('maxTags').textContent = maxTagsCount;
+}
+
+// ============================================================
+// 饼图（SVG）
+// ============================================================
+function renderPieChart() {
+  const container = document.getElementById('pieChart');
+  const tagCounts = {};
+  allEntries.forEach(e => {
+    if (e.tags) {
+      e.tags.forEach(t => {
+        if (t !== '未分类') tagCounts[t] = (tagCounts[t] || 0) + 1;
+      });
+    }
+  });
+  // 把未分类加上
+  const uncategorized = allEntries.filter(e => e.tags && e.tags.includes('未分类')).length;
+  if (uncategorized > 0) tagCounts['未分类'] = (tagCounts['未分类'] || 0) + 0;
+
+  const entries = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((s, [,c]) => s + c, 0);
+  if (total === 0) {
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><div>暂无数据</div></div>';
+    return;
+  }
+
+  const colors = ['#38bdf8','#a78bfa','#34d399','#fbbf24','#f87171','#fb923c','#e879f9','#22d3ee','#f472b6','#64748b'];
+  const cx = 140, cy = 140, r = 110, ir = 55;
+  let startAngle = -Math.PI / 2;
+  let paths = [];
+  let legends = [];
+
+  entries.forEach(([tag, count], i) => {
+    const angle = (count / total) * 2 * Math.PI;
+    const endAngle = startAngle + angle;
+    const c = colors[i % colors.length];
+
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const large = angle > Math.PI ? 1 : 0;
+
+    const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+    paths.push(`<path d="${path}" fill="${c}" stroke="#1e293b" stroke-width="2"/>`);
+
+    const midAngle = startAngle + angle / 2;
+    const labelR = r * 0.65;
+    const lx = cx + labelR * Math.cos(midAngle);
+    const ly = cy + labelR * Math.sin(midAngle);
+    const pct = ((count / total) * 100).toFixed(1);
+    if (pct > 3) {
+      paths.push(`<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="11" font-weight="600">${pct}%</text>`);
+    }
+
+    legends.push(`<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8"><span style="width:10px;height:10px;border-radius:3px;background:${c};flex-shrink:0"></span>${tag} <span style="color:var(--text)">${count}</span></div>`);
+    startAngle = endAngle;
+  });
+
+  // 中心文字
+  const centerText = `<text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="#f1f5f9" font-size="28" font-weight="700">${total}</text>
+    <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="#94a3b8" font-size="11">条标签</text>`;
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;height:100%;gap:12px;">
+      <svg viewBox="0 0 280 280" style="width:220px;flex-shrink:0">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+        ${paths.join('\n')}
+        <circle cx="${cx}" cy="${cy}" r="${ir}" fill="#0f172a"/>
+        ${centerText}
+      </svg>
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;max-height:260px;overflow-y:auto">
+        ${legends.join('')}
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// 趋势图（柱状图）
+// ============================================================
+function renderTrendChart() {
+  const container = document.getElementById('trendChart');
+  if (allEntries.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><div>暂无数据</div></div>';
+    return;
+  }
+
+  // 按日期分组
+  const daily = {};
+  allEntries.forEach(e => {
+    const d = e.createdAt ? e.createdAt.split('T')[0] : '未知';
+    daily[d] = (daily[d] || 0) + 1;
+  });
+
+  const dates = Object.keys(daily).sort();
+  const maxVal = Math.max(...Object.values(daily), 1);
+
+  const barWidth = Math.max(20, Math.min(50, 600 / dates.length));
+  const height = 200;
+  const padding = 20;
+
+  let bars = dates.map((date, i) => {
+    const val = daily[date];
+    const barH = (val / maxVal) * (height - padding * 2);
+    const x = padding + i * (barWidth + 4);
+    const y = height - padding - barH;
+    return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barH}" rx="4" fill="url(#grad)" opacity="0.85">
+      <title>${date}: ${val} 条</title>
+    </rect>
+    <text x="${x + barWidth/2}" y="${height - 6}" text-anchor="middle" fill="#64748b" font-size="9">${date.slice(5)}</text>
+    <text x="${x + barWidth/2}" y="${y - 6}" text-anchor="middle" fill="#94a3b8" font-size="10">${val}</text>`;
+  }).join('');
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${padding + dates.length * (barWidth + 4) + padding} ${height}" style="width:100%;height:100%">
+      <defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs>
+      <line x1="0" y1="${height - padding}" x2="${padding + dates.length * (barWidth + 4)}" y2="${height - padding}" stroke="#334155" stroke-width="1"/>
+      ${bars}
+    </svg>`;
+}
+
+// ============================================================
+// 标签云
+// ============================================================
+function renderTagCloud() {
+  const container = document.getElementById('tagCloud');
+  const tagCounts = {};
+  allEntries.forEach(e => {
+    if (e.tags) e.tags.forEach(t => {
+      tagCounts[t] = (tagCounts[t] || 0) + 1;
+    });
+  });
+  const sorted = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) {
+    container.innerHTML = '<span style="color:var(--dim)">暂无标签</span>';
+    return;
+  }
+  const maxCount = sorted[0][1];
+  const colors = ['tag-color-0','tag-color-1','tag-color-2','tag-color-3','tag-color-4','tag-color-5','tag-color-6','tag-color-7'];
+
+  container.innerHTML = sorted.map(([tag, count], i) => {
+    const ratio = count / maxCount;
+    let sizeClass = 'size-sm';
+    if (ratio > 0.7) sizeClass = 'size-lg';
+    else if (ratio > 0.4) sizeClass = 'size-md';
+    const colorClass = colors[i % colors.length];
+    return `<span class="tag-item ${sizeClass} ${colorClass}"><span>${tag}</span><span class="cnt">${count}</span></span>`;
+  }).join('');
+}
+
+// ============================================================
+// 搜索 + 列表
+// ============================================================
+function filterEntries() {
+  const container = document.getElementById('entryList');
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  let filtered = allEntries;
+  if (q) {
+    filtered = allEntries.filter(e => {
+      const title = (e.title || '').toLowerCase();
+      const summary = (e.summary || '').toLowerCase();
+      const tags = (e.tags || []).join(' ').toLowerCase();
+      return title.includes(q) || summary.includes(q) || tags.includes(q);
+    });
+  }
+
+  // 按时间倒序
+  filtered = [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="icon">🔍</div><div>${q ? '未找到匹配条目' : '暂无知识条目'}</div></div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(e => {
+    const tags = (e.tags || []).map(t => `<span class="entry-tag">${t}</span>`).join('');
+    const date = e.createdAt ? new Date(e.createdAt).toLocaleString('zh-CN') : '';
+    return `<div class="entry-item">
+      <div class="entry-title"><a href="${e.url}" target="_blank">${e.title || '无标题'}</a></div>
+      <div class="entry-tags">${tags}</div>
+      <div class="entry-summary">${e.summary ? e.summary.substring(0, 200) : '无摘要'}</div>
+      <div class="entry-meta">ID: ${e.id} &middot; ${date}</div>
+    </div>`;
+  }).join('');
+}
+
+// 加载
+loadData();
+</script>
+</body>
+</html>
